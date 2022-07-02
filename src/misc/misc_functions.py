@@ -223,7 +223,7 @@ def future_yield_by_current_altaar(gotchi_kinship_array, altaar_level, parcel_di
     yield_till_now = 0
     for i in range(num_days):
         yield_till_now += get_yield_for_the_day(gotchi_array, altaar_level, parcel_dim)[0]
-        gotchi_array[:] = map(lambda x: x+170, gotchi_array) # gotchi kinships increase by 2 everyday
+        gotchi_array[:] = map(lambda x: x+2, gotchi_array) # gotchi kinships increase by 2 everyday
         
     return yield_till_now
 
