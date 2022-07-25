@@ -311,3 +311,5 @@ class ClubHomePosts1(Resource):
         }), 200)
 
         #return make_response(jsonify(result), 200)
+
+
