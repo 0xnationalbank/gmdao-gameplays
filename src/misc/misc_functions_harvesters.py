@@ -192,8 +192,35 @@ def reservoir_build_time_finder(x):
 
 daily_reservoir_empty_frequency = 3
 
+class HelperDictsClass:
+    
+    reservoir_cost_dict = None
+    reservoir_capacity = None
+    reservoir_build_time = None
+    harvester_cost_dict = None
+    harvester_build_time = None
+    harvester_rate = None
+    
+    
+    def __init__(self, alchemica_type):
+        self.reservoir_cost_dict = reservoir_cost_finder(alchemica_type)
+        self.reservoir_capacity = reservoir_capacity_finder(alchemica_type)
+        self.reservoir_build_time = reservoir_build_time_finder(alchemica_type)
+        self.harvester_cost_dict = harvestor_cost_finder(alchemica_type)
+        self.harvester_build_time = harvestor_build_time_finder(alchemica_type)
+        self.harvester_rate = harvestor_harvestrate_finder(alchemica_type)
 
-def compute_profit_for_time_T(harvestors_array, reservoirs_array, T, reservoir_cost_dict, reservoir_build_time, harvester_cost_dict, harvester_build_time, harvester_rate, alchemica_factor):
+
+helper_dicts = {
+    'FUD': HelperDictsClass('FUD'),
+    'FOMO': HelperDictsClass('FOMO'),
+    'ALPHA': HelperDictsClass('ALPHA'),
+    'KEK': HelperDictsClass('KEK')
+}
+
+
+
+def compute_profit_for_time_T(harvestors_array, reservoirs_array, T, helper_obj, alchemica_factor, alchemica_amount):
     ## what should be the order in which harvestors and reservoirs are built, it is also important
     ## here we will first construct all reseervoirs, then all harvestors in desccending order
     
@@ -202,18 +229,23 @@ def compute_profit_for_time_T(harvestors_array, reservoirs_array, T, reservoir_c
     harvest_till_now = 0
     
     for reservoir in reservoirs_array:
-        cost_till_now += reservoir_cost_dict[reservoir]
-        days_passed += reservoir_build_time[reservoir]
+        cost_till_now += helper_obj.reservoir_cost_dict[reservoir]
+        days_passed += helper_obj.reservoir_build_time[reservoir]
         
     #print("total reservoir cost -->", cost_till_now)
-        
+    
     for harvestor in sorted(harvestors_array, reverse=True):
         if harvestor == 0:
             continue
         
-        cost_till_now += harvester_cost_dict[harvestor]
-        days_passed += harvester_build_time[harvestor]
-        harvest_till_now += alchemica_factor * harvester_rate[harvestor] * (T-days_passed) #TODO - also add all the time that has passed from level 1 to current upgrade
+        cost_till_now += helper_obj.harvester_cost_dict[harvestor]
+        days_passed += helper_obj.harvester_build_time[harvestor]
+                
+        harvest_till_now += alchemica_factor * helper_obj.harvester_rate[harvestor] * (T-days_passed) #TODO - also add all the time that has passed from level 1 to current upgrade
+        
+        
+    if harvest_till_now > alchemica_amount:
+        harvest_till_now = alchemica_amount
         
     #print("adding on harvestor cost -->", cost_till_now)
     #print("total harvest -->", harvest_till_now)
@@ -222,7 +254,9 @@ def compute_profit_for_time_T(harvestors_array, reservoirs_array, T, reservoir_c
 
 
 
-def compute_reservoir_needed(harvestors_array, harvester_rate, reservoir_capacity):
+
+
+def compute_reservoir_needed(harvestors_array, helper_obj):
     ## keep on upgrading the current reservoir till highest level, then start building the 2nd one
     
     reservoirs_array = []
@@ -232,7 +266,7 @@ def compute_reservoir_needed(harvestors_array, harvester_rate, reservoir_capacit
     for harvestor in harvestors_array:
         if harvestor == 0:
             continue
-        total_daily_required_capacity += harvester_rate[harvestor]
+        total_daily_required_capacity += helper_obj.harvester_rate[harvestor]
         
     
     #print("total daily required capacity -->", total_daily_required_capacity)
@@ -241,47 +275,46 @@ def compute_reservoir_needed(harvestors_array, harvester_rate, reservoir_capacit
     while True:
         #print("loop")
         
-        if total_daily_required_capacity > daily_reservoir_empty_frequency*reservoir_capacity[9]: #means more than 1 reservoir is needed
+        if total_daily_required_capacity > daily_reservoir_empty_frequency*helper_obj.reservoir_capacity[9]: #means more than 1 reservoir is needed
             reservoirs_array.append(9) #append maximum level
-            total_daily_required_capacity -= daily_reservoir_empty_frequency*reservoir_capacity[9]
+            total_daily_required_capacity -= daily_reservoir_empty_frequency*helper_obj.reservoir_capacity[9]
             
         else:
             for i in range(1, 10):
-                if total_daily_required_capacity < daily_reservoir_empty_frequency*reservoir_capacity[i]:
+                if total_daily_required_capacity < daily_reservoir_empty_frequency*helper_obj.reservoir_capacity[i]:
                     reservoirs_array.append(i)
                     return reservoirs_array
             
 
-def compute_harvestor_reservoir_for_parcel_alchemica(parcel, alchemica_type, T):
+            
+
+            
+
+
+def compute_harvestor_reservoir_for_parcel_alchemica(parcel, alchemica_type, T, parcel_alchemica_content):
     
     harvestors_built = [0]*parcel.max_allowed_harvestors_for_alchemica(alchemica_type)
     harvestors_built[0] = 1
     reservoirs_built = [1]
-
-    harvester_cost_dict = harvestor_cost_finder(alchemica_type)
-    harvester_build_time = harvestor_build_time_finder(alchemica_type)
-    harvester_rate = harvestor_harvestrate_finder(alchemica_type)
-
-    reservoir_cost_dict = reservoir_cost_finder(alchemica_type)
-    reservoir_capacity = reservoir_capacity_finder(alchemica_type)
-    reservoir_build_time = reservoir_build_time_finder(alchemica_type)
+    
+    helper_obj = helper_dicts[alchemica_type]
 
     alchemica_factor = alchemica_factor_dict[alchemica_type]
     
-    total_spent = harvester_cost_dict[1] + reservoir_cost_dict[1] #building level 1 harvestor and reservoir
+    alchemica_amount = parcel_alchemica_content * alchemica_factor
+    
+    total_spent = helper_obj.harvester_cost_dict[1] + helper_obj.reservoir_cost_dict[1] #building level 1 harvestor and reservoir
 
     original_harvestors_array = harvestors_built.copy()
     original_reservoirs_array = reservoirs_built.copy()
 
     while(True):
-
+    
         optimized_harvestors_array = original_harvestors_array.copy()
         optimized_reservoirs_array = original_reservoirs_array.copy()
 
 
-        optimized_profit = compute_profit_for_time_T(optimized_harvestors_array, optimized_reservoirs_array, T, 
-                                                     reservoir_cost_dict, reservoir_build_time, harvester_cost_dict,
-                                                     harvester_build_time, harvester_rate, alchemica_factor)
+        optimized_profit = compute_profit_for_time_T(optimized_harvestors_array, optimized_reservoirs_array, T, helper_obj, alchemica_factor, alchemica_amount)
         # break the loop when current state is the max profit state
 
 #         print("----------------------------------------")
@@ -307,14 +340,15 @@ def compute_harvestor_reservoir_for_parcel_alchemica(parcel, alchemica_type, T):
 
 
             #compute the reservoir needed
-            new_reservoirs_array = compute_reservoir_needed(new_harvestors_array, harvester_rate, reservoir_capacity)
+            new_reservoirs_array = compute_reservoir_needed(new_harvestors_array, helper_obj)
             #print("new reservoir --> ", new_reservoirs_array)
+
+            #print("alchemica factor {}, alchemica amount {}".format(alchemica_factor, alchemica_amount))
 
 
             #compute the total profit of the setup
             new_profit = compute_profit_for_time_T(new_harvestors_array, new_reservoirs_array, T, 
-                                                   reservoir_cost_dict, reservoir_build_time, harvester_cost_dict,
-                                                   harvester_build_time, harvester_rate, alchemica_factor)
+                                                   helper_obj, alchemica_factor, alchemica_amount)
 
             #print("new profit -->", new_profit)
 
@@ -340,3 +374,6 @@ def compute_harvestor_reservoir_for_parcel_alchemica(parcel, alchemica_type, T):
             original_reservoirs_array = optimized_reservoirs_array.copy()
 
     return optimized_harvestors_array, optimized_reservoirs_array, optimized_profit
+    
+
+    
