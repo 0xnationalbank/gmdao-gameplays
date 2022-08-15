@@ -377,3 +377,56 @@ def compute_harvestor_reservoir_for_parcel_alchemica(parcel, alchemica_type, T, 
     
 
     
+def time_spent_in_construction(harvestor_array, reservoir_array, alchemica_type, num_workers):
+    helper_obj = helper_dicts[alchemica_type]
+    
+#     print(harvestor_array)
+#     print(helper_obj.harvester_build_time)
+    
+#     print(reservoir_array)
+#     print(helper_obj.reservoir_build_time)
+    
+    total_time_spent = 0
+    for h in harvestor_array:
+        if h>0:
+            for i in range(1, h+1):
+                total_time_spent += helper_obj.harvester_build_time[i]
+    
+    
+    for r in reservoir_array:
+        if r>0:
+            for i in range(1, r+1):
+                total_time_spent += helper_obj.reservoir_build_time[i]
+    
+    
+    
+    return total_time_spent 
+
+
+
+def total_alchemica_extracted(harvestor_array, reservoir_array, alchemica_type, T, num_workers):
+    helper_obj = helper_dicts[alchemica_type]
+    
+    #print(helper_obj.harvester_rate)
+    
+    return sum([T*helper_obj.harvester_rate[k] for k in harvestor_array if k>0])
+
+
+
+
+def most_profitable_alchemica(input_al, parcel_tag):
+    
+    avg_alchemica_per_parcel = avg_alchemica_per_parcel_dict[parcel_tag]
+    
+    avg_al = [avg_alchemica_per_parcel['FUD'], avg_alchemica_per_parcel['FOMO'],
+             avg_alchemica_per_parcel['ALPHA'], avg_alchemica_per_parcel['KEK']]
+    
+    max_till_now = (input_al[0] - avg_al[0])*100/avg_al[0]
+    max_tag = 'FUD'
+    
+    relative_margin_dict = {}
+    for alchemica, x, y in zip(['FUD', 'FOMO', 'ALPHA', 'KEK'], input_al, avg_al):
+        margin = (x-y)*100/y
+        relative_margin_dict[alchemica] = round(margin,2)
+        
+    return relative_margin_dict
